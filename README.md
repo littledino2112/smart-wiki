@@ -674,3 +674,43 @@ MIT License. See [LICENSE](LICENSE) for full text. Free for personal and commerc
 ---
 
 *Based on [Andrej Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). Built by [Agrici Daniel](https://agricidaniel.com/about). Compounding knowledge is the highest-leverage habit a thinking person can build.*
+
+---
+
+## Using a Personal Fork
+
+If you have cloned this repo as your own fork and want to run *your* copy through Claude Code's plugin system (instead of the published marketplace), there are two ways — pick one based on whether you just want to **run** the fork or **edit it with live reload**. Replace `/path/to/your/fork` with your local clone path.
+
+> ⚠️ **Marketplace name collision.** This fork's `.claude-plugin/marketplace.json` uses the name `agricidaniel-claude-obsidian` — the same name as the public marketplace. Claude Code registers only **one marketplace per name**, so adding your local fork *replaces* the public one of the same name (convenient if you want the fork to fully take over; the plugin id stays `claude-obsidian@agricidaniel-claude-obsidian`). To keep both registered side by side, change the `name` field in your fork's `marketplace.json` to something unique (e.g. `local-claude-obsidian`) and adjust the `@marketplace` suffix in the commands below.
+
+### Option A: Switch your install to the fork (run the fork's current state)
+
+```bash
+# 1. uninstall the currently installed plugin
+claude plugin uninstall claude-obsidian@agricidaniel-claude-obsidian
+
+# 2. remove the existing marketplace (frees the name)
+claude plugin marketplace remove agricidaniel-claude-obsidian
+
+# 3. add your local fork as the marketplace
+claude plugin marketplace add /path/to/your/fork
+
+# 4. install from it (same plugin id, now sourced locally)
+claude plugin install claude-obsidian@agricidaniel-claude-obsidian
+```
+
+Verify with `claude plugin list`.
+
+> ℹ️ Marketplace installs are **copied** into `~/.claude/plugins/cache`, so later edits to your fork are not picked up live. After editing, run `claude plugin marketplace update agricidaniel-claude-obsidian` and reinstall — or use Option B for live editing.
+
+### Option B: Dev mode with live reload (recommended while editing the fork)
+
+Launch Claude Code pointed at the fork directly — no marketplace, loaded from disk each session:
+
+```bash
+claude --plugin-dir /path/to/your/fork
+```
+
+After editing any plugin file, run `/reload-plugins` in-session — no restart needed. A `--plugin-dir` plugin takes precedence over a same-named installed one, so you can leave your existing install in place and this overrides it for the session.
+
+> ℹ️ **Scope.** Plugin *installation* is user-global (`~/.claude`); *enablement* can be scoped per-project via that folder's `.claude/settings.json` (`enabledPlugins`). Switching the source via Option A keeps your per-folder enablement intact. `--plugin-dir` is per-launch and overrides regardless of enablement settings.
