@@ -6,16 +6,16 @@ Plugin hooks for the claude-obsidian wiki vault. All hooks are defined in `hooks
 
 | Event | Type | Purpose |
 |---|---|---|
-| `SessionStart` | command + prompt | Loads `wiki/hot.md` into context. Command type runs `[ -f wiki/hot.md ] && cat wiki/hot.md` as the canonical safety check (works for non-vault sessions without erroring). Prompt type complements with semantic context restoration. Matcher: `startup\|resume`. |
+| `SessionStart` | command | Loads `wiki/hot.md` into context via `[ -f wiki/hot.md ] && cat wiki/hot.md` (works for non-vault sessions without erroring), plus a stale-lock sweep. Prompt-type hooks are not supported on SessionStart (no conversation context exists yet), so context injection relies on command STDOUT only. Matcher: `startup\|resume`. |
 | `PostCompact` | prompt | Re-loads `wiki/hot.md` after context compaction. Hook-injected context does NOT survive compaction (only `CLAUDE.md` does), so this hook restores the hot cache mid-session. |
 | `PostToolUse` | command | Auto-commits any wiki/ or .raw/ changes after Write or Edit tool calls. Guarded by `[ -d .git ]` so it never errors in non-git directories, and by `git diff --cached --quiet` so it never creates empty commits. |
-| `Stop` | prompt | Updates `wiki/hot.md` at the end of every Claude response with a brief summary of what changed. |
+| `Stop` | command | Detects uncommitted wiki/ changes and prints a reminder asking Claude to refresh `wiki/hot.md` with a brief summary of what changed. |
 
 ## Known Issue: Plugin Hooks STDOUT Bug
 
 `anthropics/claude-code#10875` documents that **plugin hook STDOUT may not be captured** by Claude Code, while identical inline hooks in `settings.json` work correctly.
 
-**Impact**: If this bug is active in your Claude Code version, the prompt-type SessionStart and PostCompact hooks may not inject context as expected.
+**Impact**: If this bug is active in your Claude Code version, the command-type SessionStart hook and the prompt-type PostCompact hook may not inject context as expected.
 
 **Workaround**: The command-type SessionStart hook (`cat wiki/hot.md`) is the canonical safety check. It relies on STDOUT capture for context injection, so test against this issue if hot cache restoration fails. As a fallback, copy the hook config from `hooks.json` into your user-level `~/.claude/settings.json` instead of relying on plugin hooks.
 
