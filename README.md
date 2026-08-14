@@ -336,7 +336,7 @@ Sources land in `.raw/`. The `/wiki-ingest` agent reads each source, extracts en
 
 ### Multi-writer safety (v1.7+)
 
-Parallel ingest sub-agents can target the same wiki page if the user batches multiple sources. `scripts/wiki-lock.sh` provides per-file advisory locks: one writer acquires, the other waits and retries on the next pass. The PostToolUse auto-commit hook checks the lock list before staging, deferring the commit while writes are in flight.
+Parallel ingest sub-agents can target the same wiki page if the user batches multiple sources. `scripts/wiki-lock.sh` provides per-file advisory locks: one writer acquires, the other waits and retries on the next pass. Vault commits are manual and deliberate — the plugin never commits on your behalf, so batch a session's changes into one descriptive commit when the work is done.
 
 <p align="center">
   <img src="assets/diagrams/multi-writer-locking.svg" alt="Architecture diagram: two parallel writers attempt to acquire a lock on the same wiki page via wiki-lock.sh. One writer is granted, writes the page, and releases the lock. The other writer logs the skip and retries on the next pass. No corruption, no half-written pages." width="100%" />

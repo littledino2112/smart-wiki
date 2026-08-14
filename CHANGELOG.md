@@ -2,6 +2,20 @@
 
 All notable changes to claude-obsidian. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.10.0] - 2026-08-14 (remove the auto-commit feature)
+
+Vault commits are now always manual and deliberate. The PostToolUse auto-commit hook produced timestamp-only messages (`wiki: auto-commit YYYY-MM-DD HH:MM`) — checkpoints that say nothing about what changed — and its `git add -- wiki/ .raw/ .vault-meta/` died on a fatal pathspec error in any vault without a `.vault-meta/` directory (`|| true` swallowed it), so the feature silently never ran in exactly the fresh vaults it targeted. Rather than fix the pathspec and invest in message generation, the feature is removed: descriptive history is the owner's job, and the narrative record already lives in `wiki/log.md`.
+
+### Removed
+
+- **The PostToolUse auto-commit hook** (`hooks/hooks.json`), and with it the `.vault-meta/auto-commit.disabled` opt-out flag. No other PostToolUse hooks existed; the event block is gone entirely. SessionStart / PostCompact / Stop hooks are unchanged.
+
+### Changed
+
+- **`wiki-fold` commit mode now lands the fold as ONE descriptive commit** (`skills/wiki-fold/SKILL.md`): after writing the fold page + index + log entries, the skill runs `git add` on exactly those three files and commits with `wiki: fold {FOLD-ID} — rollup of {N} log entries ({range})`. Replaces "three `wiki: auto-commit` entries are expected"; reversal is now a single `git revert`. Frontmatter description updated to match.
+- Docs scrubbed of the feature: `README.md` multi-writer section (lock deferral of staging → manual-commit guidance), `SECURITY.md` single-tenant bullet removed, `agents/verifier.md` git-hygiene check reworded (unignored artifacts pollute the next manual commit rather than a hook loop), `skills/wiki-ingest/SKILL.md` lock-property bullet removed, `skills/think/SKILL.md` example swapped, `docs/dragonscale-guide.md` fold-mode section, `.windsurf/rules/claude-obsidian.md` rule swapped for "commits are manual", `hooks/README.md` PostToolUse row removed. Historical audit docs and vault pages intentionally untouched.
+- `.claude-plugin/plugin.json` + `marketplace.json` version 1.9.4 → 1.10.0 (minor bump: user-facing behavior removed).
+
 ## [1.9.4] - 2026-08-14 (hot-cache accretion fix: overwrite semantics + size guard)
 
 Field finding (blink-wiki vault): `wiki/hot.md` grew to 282 KB / 36k words — 90 dated entries stacked inside `## Last Updated` — because the writer skills said only "Update `wiki/hot.md`", so each session followed the file's own precedent and prepended another entry. At that size, Claude Code truncates SessionStart hook output to a 2 KB preview, silently defeating the hot cache's entire purpose. The ≤500-word / overwrite-completely rule lived only in the `wiki` bootstrap skill (not loaded during save/ingest/autoresearch) and in the Stop-hook reminder, which rarely fires: it keys on uncommitted `wiki/` changes, but the PostToolUse auto-commit hook usually empties the diff before Stop.

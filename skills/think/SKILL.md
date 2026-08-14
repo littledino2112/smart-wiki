@@ -50,7 +50,7 @@ In practice: when auditing a skill, ask "does this bug pattern exist in adjacent
 
 The second CONNECT is about execution. Moving from an isolated idea to an integrated system. How do these individual thoughts, tools, or agents plug into one another to create a seamless, functioning whole? This is the principle of building the wiring.
 
-In practice: when shipping a new skill, audit how it integrates with hooks, transport, locks, the router, the verifier agent. The skill that works in isolation but breaks the auto-commit hook is not a working skill.
+In practice: when shipping a new skill, audit how it integrates with hooks, transport, locks, the router, the verifier agent. The skill that works in isolation but breaks the lock protocol is not a working skill.
 
 ### 7. FEEL (emotional intelligence + intuition)
 

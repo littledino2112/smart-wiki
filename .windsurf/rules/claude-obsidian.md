@@ -46,7 +46,7 @@ Run `bash bin/setup-multi-agent.sh` once to symlink `skills/` into `.windsurf/sk
 - **Read `wiki/hot.md` silently at session start** to restore context
 - **Use wikilinks** `[[Note Name]]` for all internal references
 - **Frontmatter is flat YAML** with plural keys (`tags`, `aliases`)
-- **Auto-commit hook** fires on every Write/Edit to `wiki/` and `.raw/`
+- **Commits are manual** — batch vault changes into deliberate, descriptive commits
 - **Append to `wiki/log.md`** at the top, never edit past entries
 
 ## Bootstrap
