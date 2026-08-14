@@ -39,6 +39,7 @@ Work through these in order:
 8. **Stale index entries**. Items in `wiki/index.md` pointing to renamed or deleted pages.
 9. **Address validity** (DragonScale Mechanism 2). For every page that has an `address:` frontmatter field, validate the format. See the **Address Validation** section below.
 10. **Semantic tiling** (DragonScale Mechanism 3, opt-in). Flag candidate duplicate pages (across all scanned types, not just concepts) via embedding cosine similarity. See the **Semantic Tiling** section below.
+11. **Hot cache size**. If `wiki/hot.md` exceeds 600 words (`wc -w`) or has more than one dated entry under `## Last Updated`, the cache has degraded into a journal — at that size session-start injection gets truncated and the cache stops working. Flag it and rewrite it to spec: ≤500 words, one dated entry, prior content dropped (history lives in `wiki/log.md`).
 
 ---
 

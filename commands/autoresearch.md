@@ -14,6 +14,6 @@ Before starting, read `skills/autoresearch/references/program.md` to load the re
 
 If no vault is set up yet, say: "No wiki vault found. Run /wiki first to set one up."
 
-After research is complete, update wiki/index.md, wiki/log.md, and wiki/hot.md.
+After research is complete, update wiki/index.md and wiki/log.md, and rewrite wiki/hot.md from scratch (≤500 words, exactly one dated entry under "Last Updated"; it is a cache, not a journal — replace prior content entirely).
 
 Report how many pages were created and what the key findings are.

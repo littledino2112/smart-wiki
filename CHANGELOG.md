@@ -2,6 +2,22 @@
 
 All notable changes to claude-obsidian. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.9.4] - 2026-08-14 (hot-cache accretion fix: overwrite semantics + size guard)
+
+Field finding (blink-wiki vault): `wiki/hot.md` grew to 282 KB / 36k words — 90 dated entries stacked inside `## Last Updated` — because the writer skills said only "Update `wiki/hot.md`", so each session followed the file's own precedent and prepended another entry. At that size, Claude Code truncates SessionStart hook output to a 2 KB preview, silently defeating the hot cache's entire purpose. The ≤500-word / overwrite-completely rule lived only in the `wiki` bootstrap skill (not loaded during save/ingest/autoresearch) and in the Stop-hook reminder, which rarely fires: it keys on uncommitted `wiki/` changes, but the PostToolUse auto-commit hook usually empties the diff before Stop.
+
+### Changed
+
+- **Writer skills now carry overwrite semantics inline** (`skills/save/SKILL.md` step 9, `skills/wiki-ingest/SKILL.md` step 9 + batch step 4 + guardrail, `skills/autoresearch/SKILL.md` step 3, `commands/autoresearch.md`): "Update" → "Rewrite from scratch: keep frontmatter, exactly ONE dated entry under `## Last Updated`, ≤500 words, replace all prior content — history lives in `wiki/log.md`." Each skill loads standalone, so each must state the cap itself.
+- **Canonical spec tightened** (`skills/wiki/SKILL.md`): adds the one-dated-entry rule and an explicit "never prepend a new dated entry above old ones".
+- **`Stop` hook gained a mechanical size guard** (`hooks/hooks.json`): if `wc -w wiki/hot.md` > 600, prints `HOT_CACHE_OVERSIZE` with rewrite-to-spec instructions — independent of git state, so it fires even when auto-commit has emptied the diff. The existing `WIKI_CHANGED` reminder also now names the one-dated-entry rule.
+
+### Added
+
+- **Lint check 11: hot cache size** (`skills/wiki-lint/SKILL.md`) — flags `wiki/hot.md` over 600 words or with multiple dated entries. Previously `hot.md` sat in lint's exclusion sets, so no audit could catch the bloat.
+- `hooks/README.md` documents both Stop-hook guards.
+- `.claude-plugin/plugin.json` + `marketplace.json` version 1.9.3 → 1.9.4.
+
 ## [1.9.3] - 2026-08-14 (drop unsupported SessionStart prompt hook)
 
 ### Fixed

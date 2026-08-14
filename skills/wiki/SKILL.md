@@ -91,7 +91,7 @@ YYYY-MM-DD. [what happened]
 - Open question: [thing still being investigated]
 ```
 
-Keep it under 500 words. It is a cache, not a journal. Overwrite it completely each time.
+Keep it under 500 words, with exactly ONE dated entry under `## Last Updated`. It is a cache, not a journal. Overwrite it completely each time — never prepend a new dated entry above old ones; prior state is already preserved in `wiki/log.md` and git history.
 
 ---
 

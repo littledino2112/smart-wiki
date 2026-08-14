@@ -239,7 +239,7 @@ sources:
    - Synthesis: [[Research: Topic]]
    - Key finding: [one sentence]
    ```
-3. Update `wiki/hot.md` with the research summary
+3. Rewrite `wiki/hot.md` from scratch with the research summary: ≤500 words, exactly ONE dated entry under `## Last Updated`; replace all prior content — it is a cache, not a journal; history lives in `wiki/log.md`
 
 ---
 

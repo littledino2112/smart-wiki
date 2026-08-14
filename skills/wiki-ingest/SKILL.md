@@ -174,7 +174,7 @@ Steps:
 6. **Update** relevant domain page(s) and their `_index.md` sub-indexes.
 7. **Update** `wiki/overview.md` if the big picture changed.
 8. **Update** `wiki/index.md`. Add entries for all new pages.
-9. **Update** `wiki/hot.md` with this ingest's context.
+9. **Rewrite** `wiki/hot.md` from scratch with this ingest's context: keep the frontmatter, exactly ONE dated entry under `## Last Updated` (current state only), trimmed Key Recent Facts / Recent Changes / Active Threads, ≤500 words total. Replace all prior content — it is a cache, not a journal; history already lives in `wiki/log.md`. Never prepend a new dated entry above old ones.
 10. **Append** to `wiki/log.md` (new entries at the TOP):
     ```markdown
     ## [YYYY-MM-DD] ingest | Source Title
@@ -197,7 +197,7 @@ Steps:
 1. List all files to process. Confirm with user before starting.
 2. Process each source following the single ingest flow. Defer cross-referencing between sources until step 3.
 3. After all sources: do a cross-reference pass. Look for connections between the newly ingested sources.
-4. Update index, hot cache, and log once at the end (not per-source).
+4. Update index and log once at the end (not per-source), and rewrite the hot cache from scratch (≤500 words, one dated entry — per step 9 of the single ingest flow).
 5. Report: "Processed N sources. Created X pages, updated Y pages. Here are the key connections I found."
 
 Batch ingest is less interactive. For 30+ sources, expect significant processing time. Check in with the user after every 10 sources.
@@ -246,7 +246,7 @@ Do not silently overwrite old claims. Flag and let the user decide.
 - **Source files under `.raw/` are immutable.** Do not modify the files that users drop there (articles, transcripts, images). The `.raw/.manifest.json` delta tracker and its `address_map` (DragonScale Mechanism 2) are the only files under `.raw/` that `wiki-ingest` itself maintains. Treat every other file under `.raw/` as read-only source content.
 - Do not create duplicate pages. Always check the index and search before creating.
 - Do not skip the log entry. Every ingest must be recorded.
-- Do not skip the hot cache update. It is what keeps future sessions fast.
+- Do not skip the hot cache rewrite. It is what keeps future sessions fast. And never append to it — one dated entry, ≤500 words, prior content replaced.
 
 ---
 

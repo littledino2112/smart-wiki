@@ -9,7 +9,7 @@ Plugin hooks for the claude-obsidian wiki vault. All hooks are defined in `hooks
 | `SessionStart` | command | Loads `wiki/hot.md` into context via `[ -f wiki/hot.md ] && cat wiki/hot.md` (works for non-vault sessions without erroring), plus a stale-lock sweep. Prompt-type hooks are not supported on SessionStart (no conversation context exists yet), so context injection relies on command STDOUT only. Matcher: `startup\|resume`. |
 | `PostCompact` | prompt | Re-loads `wiki/hot.md` after context compaction. Hook-injected context does NOT survive compaction (only `CLAUDE.md` does), so this hook restores the hot cache mid-session. |
 | `PostToolUse` | command | Auto-commits any wiki/ or .raw/ changes after Write or Edit tool calls. Guarded by `[ -d .git ]` so it never errors in non-git directories, and by `git diff --cached --quiet` so it never creates empty commits. |
-| `Stop` | command | Detects uncommitted wiki/ changes and prints a reminder asking Claude to refresh `wiki/hot.md` with a brief summary of what changed. |
+| `Stop` | command | Two guards: (1) if `wiki/hot.md` exceeds 600 words, prints `HOT_CACHE_OVERSIZE` instructing Claude to rewrite it to spec (≤500 words, one dated entry) — this fires regardless of git state; (2) if uncommitted wiki/ changes exist, prints `WIKI_CHANGED` asking Claude to refresh `wiki/hot.md`. |
 
 ## Known Issue: Plugin Hooks STDOUT Bug
 

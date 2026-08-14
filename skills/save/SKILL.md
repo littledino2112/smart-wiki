@@ -102,7 +102,7 @@ The mode router (`python3 scripts/wiki-mode.py route session "<topic>"`) applies
    - Location: wiki/[folder]/Note Title.md
    - From: conversation on [brief topic description]
    ```
-9. **Update** `wiki/hot.md` to reflect the new addition.
+9. **Rewrite** `wiki/hot.md` from scratch to reflect the new addition: keep the frontmatter, exactly ONE dated entry under `## Last Updated` (current state only), trimmed Key Recent Facts / Recent Changes / Active Threads, ≤500 words total. Replace all prior content — it is a cache, not a journal; history already lives in `wiki/log.md`. Never prepend a new dated entry above old ones.
 10. **Confirm**: "Saved as [[Note Title]] in wiki/[folder]/."
 
 ---
