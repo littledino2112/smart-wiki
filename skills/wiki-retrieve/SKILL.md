@@ -157,7 +157,7 @@ After this skill is installed, `skills/wiki-query/SKILL.md` standard and deep mo
 
 1. Read `wiki/hot.md` (always — quick context).
 2. Call `python3 scripts/retrieve.py "<query>" --top 5`.
-3. Read the candidate pages from the result's `absolute_path` field (using the v1.7 transport selector — `obsidian-cli read` or `Read` tool).
+3. Read the candidate pages from the result's `absolute_path` field (using the transport selector — `Read` tool by default, `obsidian-cli read` if the user opted in).
 4. Synthesize with chunk-level citation.
 
 Quick mode is unchanged (hot.md only — never invokes retrieval).

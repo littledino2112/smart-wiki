@@ -13,11 +13,11 @@ Read the source. Write the wiki. Cross-reference everything. A single source typ
 
 ## Transport (v1.7+)
 
-Before mutating any vault file, consult `.vault-meta/transport.json` (auto-created by `bash scripts/detect-transport.sh`). Use the `preferred` transport per the fallback chain:
+Before mutating any vault file, consult `.vault-meta/transport.json` (written by `bash scripts/detect-transport.sh`; if it is missing, use **filesystem** — don't run detection mid-task). Use the `preferred` transport. Filesystem is the default; the others are opt-in, used only when the user pins them with `manual_override`.
 
-- **cli** — `obsidian-cli write "$VAULT" "$NOTE" < content.md` (or `append`, `property:set`); see [`skills/wiki-cli/SKILL.md`](../wiki-cli/SKILL.md)
-- **mcp-obsidian** / **mcpvault** — `mcp__obsidian-vault__write_note` and friends; see [`skills/wiki/references/mcp-setup.md`](../wiki/references/mcp-setup.md)
-- **filesystem** — Claude's `Write`/`Edit` tools with absolute vault-rooted paths (final floor; always works)
+- **filesystem** (default) — Claude's `Write`/`Edit` tools with absolute vault-rooted paths (always works; no Obsidian needed)
+- **cli** (opt-in) — `obsidian-cli write "$VAULT" "$NOTE" < content.md` (or `append`, `property:set`); see [`skills/wiki-cli/SKILL.md`](../wiki-cli/SKILL.md)
+- **mcp-obsidian** / **mcpvault** (opt-in) — `mcp__obsidian-vault__write_note` and friends; see [`skills/wiki/references/mcp-setup.md`](../wiki/references/mcp-setup.md)
 
 Full decision tree: [`wiki/references/transport-fallback.md`](../../wiki/references/transport-fallback.md).
 

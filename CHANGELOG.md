@@ -2,6 +2,19 @@
 
 All notable changes to claude-obsidian. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: [SemVer](https://semver.org/).
 
+## [1.11.0] - 2026-11-02 (Obsidian optional: filesystem is the default transport)
+
+The vault now runs with no Obsidian app, CLI, or plugin installed. Field finding (omarchy-pc): `detect-transport.sh` treated the `obsidian` desktop binary as a CLI if `obsidian --version` exited 0 — but on Linux that command launches the Electron app (loads the asar, checks GitHub for updates) instead of printing a version, so detection either started Obsidian or auto-preferred a "CLI" that is not one. Rather than harden the probe, the CLI stops being auto-preferred at all: plain Markdown via Claude's own Read/Write/Edit tools is the default, and the Obsidian CLI / MCP servers are opt-in through the existing `manual_override` mechanism.
+
+### Changed
+
+- **`scripts/detect-transport.sh`**: `preferred` is always `filesystem` (chain `["filesystem"]`) unless `manual_override` is set. Only the dedicated `obsidian-cli` binary is detected, and only informationally; the `obsidian` desktop binary is never executed. Snapshot `schema_version` 1 → 2, and snapshots below 2 are refreshed regardless of age, so v1.10 snapshots that auto-preferred `cli` are replaced on the next run (manual overrides are still preserved).
+- **`wiki/references/transport-fallback.md`**: decision tree, transport table and pseudocode rewritten around filesystem-as-default; a missing `transport.json` means filesystem, not "run detection first". Manual-override section reframed as the opt-in path.
+- **`skills/wiki-cli/SKILL.md`**: no longer the "default vault-mutation transport". Description, intro, detection example, and every recipe flipped to filesystem-first with the CLI form marked opt-in; new "Opting in to the CLI" snippet; 10-principle table updated (never probe the `obsidian` binary).
+- **`## Transport` sections of `wiki-ingest`, `wiki-query`, `save`, `autoresearch`, `wiki-lint`**: filesystem listed first as the default, cli/MCP marked opt-in, and a missing `transport.json` means filesystem — don't run detection mid-task. (`wiki-mode` and `wiki-fold` never selected a transport; unchanged.)
+- `skills/wiki/references/mcp-setup.md` recommendation + Option D (opt-in framing; no more probing the desktop app via flatpak), `skills/wiki-retrieve/SKILL.md` read step, `CLAUDE.md` transport section + skill table, `README.md` v1.7 banner and MCP note: say Obsidian is optional and the CLI/MCP are opt-in.
+- `.claude-plugin/plugin.json` + `marketplace.json` version 1.10.0 → 1.11.0 (minor bump: default behavior changed); descriptions no longer advertise a default Obsidian CLI transport. Historical guide (`docs/compound-vault-guide.md`) and audit docs intentionally untouched.
+
 ## [1.10.0] - 2026-08-14 (remove the auto-commit feature)
 
 Vault commits are now always manual and deliberate. The PostToolUse auto-commit hook produced timestamp-only messages (`wiki: auto-commit YYYY-MM-DD HH:MM`) — checkpoints that say nothing about what changed — and its `git add -- wiki/ .raw/ .vault-meta/` died on a fatal pathspec error in any vault without a `.vault-meta/` directory (`|| true` swallowed it), so the feature silently never ran in exactly the fresh vaults it targeted. Rather than fix the pathspec and invest in message generation, the feature is removed: descriptive history is the owner's job, and the narrative record already lives in `wiki/log.md`.

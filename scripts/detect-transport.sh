@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 # detect-transport.sh — discover which vault-mutation transports are available
 # on this machine, write a normalized JSON snapshot to .vault-meta/transport.json,
-# and pick a preferred transport per the v1.7 fallback chain.
+# and pick a preferred transport.
 #
-# Fallback chain (highest to lowest precedence):
-#   1. cli         — Obsidian CLI binary (Obsidian 1.12+). No MCP server, no TLS, no plugin.
-#   2. mcp-obsidian — REST-API-backed MCP server (Local REST API plugin required).
-#   3. mcpvault    — Filesystem-backed MCP server (BM25 search; no Obsidian plugin).
-#   4. filesystem  — Direct Read/Write/Edit tools. Always available (ultimate floor).
+# Default (v1.11+): preferred is always `filesystem` — direct Read/Write/Edit tools.
+# The vault needs no Obsidian app, CLI, or plugin. Other transports are opt-in:
+#   - cli          — Obsidian CLI binary (`obsidian-cli`). Reported when found, never auto-preferred.
+#   - mcp-obsidian — REST-API-backed MCP server (Local REST API plugin required).
+#   - mcpvault     — Filesystem-backed MCP server (BM25 search; no Obsidian plugin).
+# To opt in, set "manual_override": true plus "preferred" / "fallback_chain" in
+# transport.json (see wiki/references/transport-fallback.md §Manual override).
 #
-# MCP auto-detection is deferred to a v1.7.x patch (calling `claude mcp list` from
-# inside a running claude session has reentrancy concerns). For v1.7, we detect
-# CLI + filesystem and leave MCP fields as `{"present": null, "detection": "deferred"}`.
-# Users with MCP transports configured can either edit transport.json manually or
-# follow the legacy guidance in wiki/references/mcp-setup.md.
+# Detection never executes the `obsidian` desktop binary: on Linux `obsidian --version`
+# launches the Electron app instead of printing a version. MCP servers are not
+# auto-detected (calling `claude mcp list` from inside a running claude session has
+# reentrancy concerns); their fields stay `{"present": null, "detection": "deferred"}`.
 #
 # Usage:
 #   ./scripts/detect-transport.sh             # detect and write .vault-meta/transport.json
@@ -42,7 +43,7 @@ while [ $# -gt 0 ]; do
     --force) MODE="force" ;;
     --quiet) QUIET=true ;;
     -h|--help)
-      sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -106,7 +107,21 @@ PYEOF
 fi
 
 # ── Freshness check: skip detection if snapshot is recent ────────────────────
-if [ "$MODE" = "write" ] && [ -f "$OUTPUT_FILE" ]; then
+# Snapshots older than schema_version 2 were written when the CLI was
+# auto-preferred, so they are always refreshed regardless of age.
+SNAPSHOT_SCHEMA=0
+if [ -f "$OUTPUT_FILE" ]; then
+  SNAPSHOT_SCHEMA="$(python3 - "$OUTPUT_FILE" 2>/dev/null <<'PYEOF'
+import json, sys
+try:
+    with open(sys.argv[1]) as fh:
+        print(int(json.load(fh).get("schema_version", 0)))
+except Exception:
+    print(0)
+PYEOF
+)" || SNAPSHOT_SCHEMA=0
+fi
+if [ "$MODE" = "write" ] && [ -f "$OUTPUT_FILE" ] && [ "${SNAPSHOT_SCHEMA:-0}" -ge 2 ]; then
   if find "$OUTPUT_FILE" -mtime -${STALE_AFTER_DAYS} -print 2>/dev/null | grep -q .; then
     log "transport.json is fresh (<${STALE_AFTER_DAYS}d). Use --force to refresh."
     cat "$OUTPUT_FILE"
@@ -114,7 +129,9 @@ if [ "$MODE" = "write" ] && [ -f "$OUTPUT_FILE" ]; then
   fi
 fi
 
-# ── 1. CLI detection ─────────────────────────────────────────────────────────
+# ── 1. CLI detection (informational; never changes `preferred`) ──────────────
+# Only the dedicated `obsidian-cli` binary counts. The `obsidian` desktop binary
+# is deliberately not probed: running it with --version starts the app.
 CLI_PRESENT=false
 CLI_BINARY=""
 CLI_VERSION=""
@@ -128,15 +145,6 @@ if command -v obsidian-cli >/dev/null 2>&1; then
   # without wrapping quotes.
   CLI_VERSION_RAW="$(obsidian-cli --version 2>/dev/null | head -1 || echo unknown)"
   CLI_VERSION="$(printf '%s' "$CLI_VERSION_RAW" | json_escape || echo '"unknown"')"
-elif command -v obsidian >/dev/null 2>&1; then
-  # Obsidian 1.12+ ships `obsidian` as the CLI binary on some platforms.
-  # We treat it as cli-capable if it accepts a --cli or --version flag without launching the GUI.
-  if obsidian --version >/dev/null 2>&1; then
-    CLI_PRESENT=true
-    CLI_BINARY="obsidian"
-    CLI_VERSION_RAW="$(obsidian --version 2>/dev/null | head -1 || echo unknown)"
-    CLI_VERSION="$(printf '%s' "$CLI_VERSION_RAW" | json_escape || echo '"unknown"')"
-  fi
 fi
 # Fallback default when neither binary was found: must still be a valid JSON literal.
 if [ -z "$CLI_VERSION" ]; then
@@ -153,13 +161,10 @@ if command -v pgrep >/dev/null 2>&1; then
 fi
 
 # ── 3. Compute preferred + fallback chain ────────────────────────────────────
-if $CLI_PRESENT; then
-  PREFERRED="cli"
-  CHAIN='"cli", "filesystem"'
-else
-  PREFERRED="filesystem"
-  CHAIN='"filesystem"'
-fi
+# Filesystem is the default whatever else is installed; cli/MCP are opt-in via
+# manual_override (3b).
+PREFERRED="filesystem"
+CHAIN='"filesystem"'
 
 # ── 3b. Apply manual_override if it was parsed from the existing snapshot ────
 # Auto-detected PREFERRED/CHAIN above are overridden so the user's pinned
@@ -176,7 +181,7 @@ HOSTNAME="$(hostname 2>/dev/null || echo unknown)"
 snapshot() {
   cat <<JSON
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "detected_at": "${TIMESTAMP}",
   "host": "${HOSTNAME}",
   "vault_root": "${VAULT_ROOT}",
@@ -188,22 +193,23 @@ snapshot() {
       "present": ${CLI_PRESENT},
       "binary": "${CLI_BINARY}",
       "version_string": ${CLI_VERSION},
-      "obsidian_app_running": ${OBSIDIAN_RUNNING}
+      "obsidian_app_running": ${OBSIDIAN_RUNNING},
+      "note": "opt-in only; set manual_override to prefer it"
     },
     "filesystem": {
       "present": true,
       "vault_root": "${VAULT_ROOT}",
-      "note": "ultimate fallback; uses Claude's Read/Write/Edit tools directly"
+      "note": "default; uses Claude's Read/Write/Edit tools directly"
     },
     "mcp_obsidian": {
       "present": null,
       "detection": "deferred",
-      "note": "v1.7 does not auto-detect MCP servers. Configure manually per wiki/references/mcp-setup.md and edit this file by hand if needed."
+      "note": "MCP servers are not auto-detected (opt-in). Configure manually per wiki/references/mcp-setup.md and edit this file by hand if needed."
     },
     "mcpvault": {
       "present": null,
       "detection": "deferred",
-      "note": "v1.7 does not auto-detect MCP servers. Configure manually per wiki/references/mcp-setup.md and edit this file by hand if needed."
+      "note": "MCP servers are not auto-detected (opt-in). Configure manually per wiki/references/mcp-setup.md and edit this file by hand if needed."
     }
   }
 }
@@ -224,6 +230,6 @@ trap - EXIT
 
 log "Wrote: ${OUTPUT_FILE}"
 log "Preferred transport: ${PREFERRED}"
-$CLI_PRESENT && log "  CLI:        ${CLI_BINARY} (${CLI_VERSION_RAW})"
-log "  Filesystem: always available (Read/Write/Edit tools)"
+log "  Filesystem: default (Read/Write/Edit tools)"
+$CLI_PRESENT && log "  CLI:        ${CLI_BINARY} (${CLI_VERSION_RAW}) — opt-in via manual_override"
 log "  MCP:        not auto-detected (see wiki/references/mcp-setup.md to configure)"

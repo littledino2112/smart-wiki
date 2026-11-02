@@ -1,18 +1,18 @@
 ---
 name: wiki-cli
-description: "Default vault-mutation transport for claude-obsidian v1.7+. Wraps the Obsidian CLI (Obsidian 1.12+) as the preferred way to read, write, search, and modify vault notes from Claude — no MCP server, no REST API plugin, no TLS workarounds. Falls back to direct filesystem Read/Write/Edit when the CLI is unavailable. Triggers on: wiki-cli, obsidian cli, obsidian read, obsidian write, obsidian search, daily note, obsidian create, obsidian append, vault transport, which transport, transport detection, obsidian command line."
+description: "Vault transport reference for claude-obsidian. The default transport is the filesystem (Claude's Read/Write/Edit tools) — no Obsidian app, CLI, or plugin required. This skill also wraps the Obsidian CLI (`obsidian-cli`) as an opt-in transport for users who pin it in .vault-meta/transport.json. Triggers on: wiki-cli, obsidian cli, obsidian read, obsidian write, obsidian search, daily note, obsidian create, obsidian append, vault transport, which transport, transport detection, obsidian command line."
 allowed-tools: Read Bash
 ---
 
-# wiki-cli: Default Transport Layer
+# wiki-cli: Transport Layer
 
-claude-obsidian v1.7+ standardizes on the **Obsidian CLI** (shipped with Obsidian 1.12) as the preferred transport for all vault mutations on desktop. This skill is the recipe reference for using it.
+Since v1.11, claude-obsidian's default transport is the **filesystem**: Claude's Read/Write/Edit tools on plain Markdown. The vault needs no Obsidian app, CLI, or plugin. The **Obsidian CLI** is an opt-in transport for users who want Obsidian-native search, backlinks, and Bases views; it is used only when pinned in `.vault-meta/transport.json`. This skill is the recipe reference for both.
 
 **Substrate preference (v1.7+)**: This skill is a self-contained fallback. **Prefer `kepano/obsidian-skills`** (by Steph Ango, Obsidian CEO) as the authoritative substrate — its `obsidian-cli` skill is the canonical CLI reference for any Agent-Skills runtime. If you see an `obsidian-cli` skill available without the `claude-obsidian:` namespace, that is kepano's version: use it. The recipes below are provided so claude-obsidian remains functional when kepano's marketplace is not installed. Install kepano: `claude plugin marketplace add kepano/obsidian-skills`.
 
 ---
 
-## Why CLI over MCP
+## If you opt in: CLI vs MCP
 
 | Concern | MCP (Options A/B) | Obsidian CLI |
 |---|---|---|
@@ -23,13 +23,13 @@ claude-obsidian v1.7+ standardizes on the **Obsidian CLI** (shipped with Obsidia
 | Reentrancy | Self-MCP-calls inside Claude session can deadlock | Pure subprocess, safe |
 | Mobile / headless | Limited | Limited (CLI is desktop-only too) |
 
-CLI loses to MCP on exactly one axis: it only works on machines where Obsidian itself is installed. For headless servers and mobile, fall through to the next transport in the chain.
+Both lose to the filesystem default on setup: they only work where Obsidian (CLI) or an MCP server is installed and configured. On headless servers, mobile, or any machine without Obsidian, stay on filesystem.
 
 ---
 
 ## Detection
 
-At session start (or vault setup), run:
+Optionally, at vault setup, run:
 
 ```bash
 bash scripts/detect-transport.sh
@@ -39,10 +39,12 @@ This writes `.vault-meta/transport.json` with the schema:
 
 ```json
 {
-  "preferred": "cli",
-  "fallback_chain": ["cli", "filesystem"],
+  "schema_version": 2,
+  "manual_override": false,
+  "preferred": "filesystem",
+  "fallback_chain": ["filesystem"],
   "available": {
-    "cli": {"present": true, "binary": "obsidian-cli", "version_string": "..."},
+    "cli": {"present": false, "binary": "", "version_string": ""},
     "filesystem": {"present": true},
     "mcp_obsidian": {"present": null, "detection": "deferred"},
     "mcpvault": {"present": null, "detection": "deferred"}
@@ -50,91 +52,102 @@ This writes `.vault-meta/transport.json` with the schema:
 }
 ```
 
-**Read this file before any non-trivial vault mutation.** Skills that need to read or write should consult `preferred` and pick the corresponding transport. The decision tree lives at `wiki/references/transport-fallback.md`.
+`preferred` is always `filesystem` unless the user has set `manual_override`. Detection reports whether `obsidian-cli` is installed but never prefers it, and never executes the `obsidian` desktop binary (on Linux, `obsidian --version` launches the app).
 
-Refresh detection with `--force` after installing/removing the Obsidian CLI:
-```bash
-bash scripts/detect-transport.sh --force
+**Read this file before any non-trivial vault mutation.** If it is missing, use filesystem — do not run detection mid-task just to pick a transport. The decision tree lives at `wiki/references/transport-fallback.md`.
+
+### Opting in to the CLI
+
+Edit `.vault-meta/transport.json` and set:
+
+```json
+{
+  "manual_override": true,
+  "preferred": "cli",
+  "fallback_chain": ["cli", "filesystem"]
+}
 ```
+
+Detection preserves these fields on every refresh. Delete `manual_override` (or set it to `false`) to return to filesystem.
 
 ---
 
-## Recipes (CLI-first; fallback noted inline)
+## Recipes (filesystem default; CLI form for opt-in users)
 
-Each recipe shows the CLI form first. If the CLI is unavailable per the detection snapshot, fall through to the noted fallback. Variable substitution: `$VAULT` is the absolute vault root; `$NOTE` is a vault-relative path like `wiki/concepts/Foo.md`.
+Each recipe shows the filesystem form first — use it unless `preferred` is `cli`. If a CLI call fails, fall back to the filesystem form. Variable substitution: `$VAULT` is the absolute vault root; `$NOTE` is a vault-relative path like `wiki/concepts/Foo.md`.
 
 ### Read a note
 ```bash
-# CLI
-obsidian-cli read "$VAULT" "$NOTE"
-
-# Fallback: Claude's Read tool with absolute path
+# Filesystem: Claude's Read tool with absolute path
 # Read $VAULT/$NOTE
+
+# CLI (opt-in)
+obsidian-cli read "$VAULT" "$NOTE"
 ```
 
 ### Create or overwrite a note
 ```bash
-# CLI
-obsidian-cli write "$VAULT" "$NOTE" < /path/to/content.md
-
-# Fallback: Claude's Write tool with absolute path
+# Filesystem: Claude's Write tool with absolute path
 # Write $VAULT/$NOTE with the desired content string
+
+# CLI (opt-in)
+obsidian-cli write "$VAULT" "$NOTE" < /path/to/content.md
 ```
 
 ### Append to a note
 ```bash
-# CLI
-echo "additional content" | obsidian-cli append "$VAULT" "$NOTE"
+# Filesystem: Read $VAULT/$NOTE, append, Write back (or Edit)
 
-# Fallback: Read $VAULT/$NOTE, append manually, Write back
+# CLI (opt-in)
+echo "additional content" | obsidian-cli append "$VAULT" "$NOTE"
 ```
 
-### Search note content (CLI uses Obsidian's own search ranking)
+### Search note content
 ```bash
-# CLI
-obsidian-cli search "$VAULT" "<query>"
-
-# Fallback: ripgrep
+# Filesystem: ripgrep (or Claude's Grep tool)
 rg --type=md "<query>" "$VAULT/wiki/"
+
+# CLI (opt-in; uses Obsidian's own search ranking)
+obsidian-cli search "$VAULT" "<query>"
 ```
 
 ### Today's daily note (if Daily Notes plugin is enabled)
 ```bash
-# CLI
+# Filesystem: compute the path
+NOTE="$VAULT/wiki/daily/$(date +%Y-%m-%d).md"
+
+# CLI (opt-in)
 obsidian-cli daily:today "$VAULT"
 obsidian-cli daily:append "$VAULT" "captured at $(date)"
-
-# Fallback: compute path manually
-NOTE="$VAULT/wiki/daily/$(date +%Y-%m-%d).md"
 ```
 
 ### Patch a frontmatter property
 ```bash
-# CLI
-obsidian-cli property:set "$VAULT" "$NOTE" status "evergreen"
+# Filesystem: read frontmatter, parse, mutate, rewrite (Edit on the single line is usually enough)
+# (use mcp__obsidian-vault__update_frontmatter if an MCP transport is pinned)
 
-# Fallback: read frontmatter, parse, mutate, rewrite (use mcp__obsidian-vault__update_frontmatter if MCP is configured)
+# CLI (opt-in)
+obsidian-cli property:set "$VAULT" "$NOTE" status "evergreen"
 ```
 
 ### List backlinks for a page
 ```bash
-# CLI
-obsidian-cli backlinks "$VAULT" "$NOTE"
-
-# Fallback: ripgrep for wikilink references
+# Filesystem: ripgrep for wikilink references
 rg --type=md "\[\[$(basename "$NOTE" .md)" "$VAULT/wiki/"
+
+# CLI (opt-in)
+obsidian-cli backlinks "$VAULT" "$NOTE"
 ```
 
 ### Open a Bases (.base) file's resolved view
 ```bash
-# CLI
-obsidian-cli bases "$VAULT" "$NOTE"
-# (returns the resolved row list; supplements obsidian-bases skill which handles the .base file's YAML)
+# Filesystem: read the .base file directly; no resolved view is available without Obsidian itself
 
-# Fallback: read the .base file directly; no resolved-view available without Obsidian itself
+# CLI (opt-in; returns the resolved row list; supplements obsidian-bases skill which handles the .base file's YAML)
+obsidian-cli bases "$VAULT" "$NOTE"
 ```
 
-### Tags + bookmarks
+### Tags + bookmarks (CLI only)
 ```bash
 obsidian-cli tags "$VAULT"
 obsidian-cli bookmarks "$VAULT"
@@ -142,7 +155,7 @@ obsidian-cli bookmarks "$VAULT"
 
 ---
 
-## When CLI is NOT the right choice
+## When CLI is NOT the right choice (even if opted in)
 
 - **Mobile (iOS Share extension)**: filesystem write into `.raw/` is the only path; CLI is desktop-only.
 - **CI / headless ingest jobs**: filesystem with manual frontmatter parsing.
@@ -166,13 +179,13 @@ When working on this skill, apply the 10-principle loop. See [`skills/think/SKIL
 
 | # | Principle | Application here |
 |---|-----------|-------------------|
-| 1 | OBSERVE (ext) | Detect which Obsidian CLI binaries are installed; check if Obsidian app is running. Read `.vault-meta/transport.json` if it exists. |
-| 2 | OBSERVE (int) | Don't be biased toward filesystem fallback when CLI is actually available — verify auto-detection caught what's installed. |
+| 1 | OBSERVE (ext) | Read `.vault-meta/transport.json` if it exists. Check for `obsidian-cli` with `command -v` only — never execute the `obsidian` desktop binary to probe it. |
+| 2 | OBSERVE (int) | Don't push the user toward the CLI because it happens to be installed — filesystem is the default; the CLI is their choice to make. |
 | 3 | LISTEN | If `manual_override: true` is set in transport.json, the user has spoken — preserve their `preferred` and `fallback_chain`. |
-| 4 | THINK | Compute the right fallback chain for this environment. CLI > MCP > filesystem; freshness check before recomputing. |
+| 4 | THINK | Filesystem unless overridden; freshness check before recomputing. A missing snapshot means filesystem, not an error. |
 | 5 | CONNECT (lat) | How does this transport choice affect every other skill's write? Six downstream skills depend on this snapshot. |
 | 6 | CONNECT (sys) | Schema stability of transport.json matters more than feature richness — consumers parse the JSON via simple shell idioms. |
-| 7 | FEEL | Error message when no transport works should tell the user EXACTLY what to do (install CLI, configure MCP, etc.). |
-| 8 | ACCEPT | Filesystem fallback is fine. Admit when CLI doesn't exist; don't fabricate a binary that isn't there. |
+| 7 | FEEL | When an opted-in CLI/MCP call fails, say so and fall back to filesystem rather than stopping the task. |
+| 8 | ACCEPT | Filesystem is the default, not a degraded mode. Admit when CLI doesn't exist; don't fabricate a binary that isn't there. |
 | 9 | CREATE | Write transport.json atomically (temp + rename). Round-trip `manual_override` every cycle. |
 | 10 | GROW | As MCP support matures, auto-detection should cover the deferred tiers. Track that as v1.7.x scope. |

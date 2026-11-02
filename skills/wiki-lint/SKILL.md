@@ -15,11 +15,11 @@ Run lint after every 10-15 ingests, or weekly. Ask before auto-fixing anything. 
 
 ## Transport (v1.7+)
 
-Lint primarily reads, then writes a single report file. Both follow the standard transport policy. Read `.vault-meta/transport.json` (auto-created by `bash scripts/detect-transport.sh`):
+Lint primarily reads, then writes a single report file. Both follow the standard transport policy. Read `.vault-meta/transport.json` (written by `bash scripts/detect-transport.sh`; if it is missing, use **filesystem** — don't run detection mid-task). Filesystem is the default; the others are opt-in, used only when the user pins them with `manual_override`.
 
-- **cli** — `obsidian-cli read "$VAULT" "$NOTE"` for individual reads; `obsidian-cli backlinks "$VAULT" "$NOTE"` natively handles backlink graph (avoids re-rolling it via Grep); see [`skills/wiki-cli/SKILL.md`](../wiki-cli/SKILL.md)
-- **mcp-obsidian** / **mcpvault** — `mcp__obsidian-vault__read_multiple_notes`, `list_all_tags`
-- **filesystem** — Claude's `Read`/`Glob`/`Grep` (final floor; current v1.6 behavior)
+- **filesystem** (default) — Claude's `Read`/`Glob`/`Grep` (always works; no Obsidian needed)
+- **cli** (opt-in) — `obsidian-cli read "$VAULT" "$NOTE"` for individual reads; `obsidian-cli backlinks "$VAULT" "$NOTE"` natively handles backlink graph (avoids re-rolling it via Grep); see [`skills/wiki-cli/SKILL.md`](../wiki-cli/SKILL.md)
+- **mcp-obsidian** / **mcpvault** (opt-in) — `mcp__obsidian-vault__read_multiple_notes`, `list_all_tags`
 
 Full decision tree: [`wiki/references/transport-fallback.md`](../../wiki/references/transport-fallback.md). DragonScale Mechanism 3 tiling lint is a separate code path (Python script) and bypasses transport selection.
 

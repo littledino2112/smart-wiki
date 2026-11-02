@@ -3,7 +3,7 @@
 MCP lets Claude read and write vault notes directly without copy-paste. Four options ordered from simplest to most featureful.
 
 > [!tip] Recommendation
-> If you have **Obsidian v1.12 or newer**, start with **Option D: Obsidian CLI**. It needs no MCP server, no plugins, and no TLS workarounds. Use Options A or B only if you need persistent MCP integration or are on an older Obsidian version.
+> **None of these are required.** Since v1.11 the plugin's default transport is the filesystem (Claude's Read/Write/Edit tools), which needs no Obsidian app, CLI, or plugin. Set one of these up only if you want Obsidian-native features, then pin it in `.vault-meta/transport.json` with `"manual_override": true` (see `wiki/references/transport-fallback.md` §Manual override). If you do opt in and have **Obsidian v1.12 or newer**, start with **Option D: Obsidian CLI** — no MCP server, no plugins, no TLS workarounds.
 
 ---
 
@@ -75,15 +75,15 @@ No MCP needed. Use curl in bash throughout the session. See `rest-api.md` for al
 
 ---
 
-## Option D: Obsidian CLI (recommended for v1.12+)
+## Option D: Obsidian CLI (recommended opt-in for v1.12+)
 
 Obsidian shipped a native CLI in v1.12 (2026). It exposes vault operations directly to the terminal. No REST API plugin, no MCP server, no self-signed certs, no TLS workarounds. Claude calls it through the Bash tool.
 
 **Check if available:**
 ```bash
 which obsidian-cli 2>/dev/null && obsidian-cli --version
-# or, on flatpak:
-flatpak run md.obsidian.Obsidian --cli --version
+# Don't probe the desktop app instead (`obsidian --version`, `flatpak run md.obsidian.Obsidian ...`):
+# on Linux that launches Obsidian rather than printing a version.
 ```
 
 **Common operations:**
@@ -101,12 +101,14 @@ obsidian-cli write /path/to/vault wiki/new-note.md < content.md
 obsidian-cli search /path/to/vault "query term"
 ```
 
-**Why prefer this**:
-- No plugin install required (CLI is built into Obsidian)
+**Why choose this (if you opt in)**:
+- No community plugin to install (but Obsidian itself must be installed)
 - No MCP server process to manage
 - No TLS certificate bypass needed
 - Survives Obsidian restarts (no persistent connection)
-- Works identically across desktop and headless environments
+- Desktop only — on headless machines stay on the filesystem default
+
+To use it, pin it in `.vault-meta/transport.json`: `"manual_override": true`, `"preferred": "cli"`, `"fallback_chain": ["cli", "filesystem"]`.
 
 **When to use Options A/B/C instead**: If you need persistent semantic search, frontmatter patching, or are on Obsidian < v1.12.
 

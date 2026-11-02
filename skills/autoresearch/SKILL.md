@@ -21,11 +21,11 @@ This is based on Karpathy's autoresearch pattern: a configurable program defines
 
 ## Transport (v1.7+)
 
-The research loop writes a lot — source pages, concept pages, entity pages, manifest updates. All writes follow the standard transport policy. Read `.vault-meta/transport.json` (auto-created by `bash scripts/detect-transport.sh`):
+The research loop writes a lot — source pages, concept pages, entity pages, manifest updates. All writes follow the standard transport policy. Read `.vault-meta/transport.json` (written by `bash scripts/detect-transport.sh`; if it is missing, use **filesystem** — don't run detection mid-task). Filesystem is the default; the others are opt-in, used only when the user pins them with `manual_override`.
 
-- **cli** — `obsidian-cli write "$VAULT" "$NOTE" < content.md`; see [`skills/wiki-cli/SKILL.md`](../wiki-cli/SKILL.md)
-- **mcp-obsidian** / **mcpvault** — `mcp__obsidian-vault__write_note`
-- **filesystem** — Claude's `Write` tool with absolute path
+- **filesystem** (default) — Claude's `Write` tool with absolute path
+- **cli** (opt-in) — `obsidian-cli write "$VAULT" "$NOTE" < content.md`; see [`skills/wiki-cli/SKILL.md`](../wiki-cli/SKILL.md)
+- **mcp-obsidian** / **mcpvault** (opt-in) — `mcp__obsidian-vault__write_note`
 
 Full decision tree: [`wiki/references/transport-fallback.md`](../../wiki/references/transport-fallback.md). Web fetches (`WebFetch`/`WebSearch`) are transport-agnostic.
 
